@@ -1,0 +1,140 @@
+<!--
+    author  蒋领
+    date    2019年05月30日
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Jasypt加密</title>
+    <style>
+        .area {
+            border: 1px solid black;
+            width: 670px;
+            height: 600px;
+        }
+
+        #container {
+            width: 1400px;
+            height: 630px;
+            margin: 20px auto auto;
+        }
+
+        #tool-bar {
+            margin-left: 100px;
+        }
+
+        #salt {
+            width: 250px;
+        }
+    </style>
+</head>
+<body>
+<div id="tool-bar">
+    <div>
+        <button id="encrypt-all" onclick="encryptAll()">加密全文</button>
+        <button id="encrypt-auto" onclick="encryptAuto()">自动解析加密</button>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <button id="decrypt-auto" onclick="decrypt()">解密</button>
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <label for="salt">密钥</label>
+        <input type="text" id="salt">
+        &nbsp;&nbsp;&nbsp;&nbsp;
+        <span id="cost"></span>
+    </div>
+    <div>
+        <br>
+        <span>输出格式：</span>
+        <input id="auto" type="radio" name="outType" value="0" checked>
+        <label for="auto">自动</label>
+        &nbsp;&nbsp;
+        <input id="prop" type="radio" name="outType" value="1">
+        <label for="prop">properties</label>
+        &nbsp;&nbsp;
+        <input id="yaml" type="radio" name="outType" value="2">
+        <label for="yaml">yml/yaml</label>
+    </div>
+</div>
+<div id="container">
+    <textarea id="left" class="area" wrap="off"></textarea>
+    &nbsp;&nbsp;&nbsp;&nbsp;
+    <textarea id="right" class="area" wrap="off" readonly></textarea>
+</div>
+
+
+<script src="../static/jquery-3.3.1/jquery-3.3.1.min.js"></script>
+<script type="text/javascript">
+    $(function () {
+        var left = $('#left');
+        var right = $('#right');
+        left.scroll(function () {
+            left.blur();
+            right.scrollTop($(this).scrollTop());
+            right.scrollLeft($(this).scrollLeft());
+        });
+        right.scroll(function () {
+            right.blur();
+            left.scrollTop($(this).scrollTop());
+            left.scrollLeft($(this).scrollLeft());
+        });
+    });
+
+    var encryptAll = function () {
+        communicate($('#left').val(), true, false);
+    };
+
+    var encryptAuto = function () {
+        communicate($('#left').val(), true, true);
+    };
+
+    var decrypt = function () {
+        communicate($('#left').val(), false, true);
+    };
+
+    var getSalt = function () {
+        var salt = $('#salt').val();
+        if (salt.length === 0) {
+            return false;
+        } else {
+            return salt;
+        }
+    };
+
+    /**
+     *
+     * @param text 文本内容
+     * @param encrypt true加密 false解密
+     * @param auto true自动解析处理 false全部加密或解密
+     */
+    var communicate = function (text, encrypt, auto) {
+        var start = new Date().getTime();
+        if (!getSalt()) {
+            alert("密钥不能为空");
+            return;
+        }
+        $.ajax({
+            url: '/process',
+            type: 'POST',
+            data: {
+                text: text,
+                encrypt: encrypt,
+                auto: auto,
+                salt: getSalt(),
+                outType: $('input[name="outType"]:checked').val()
+            },
+            success: function (data) {
+                var end = new Date().getTime();
+                $('#right').val(data);
+                $('#cost').text('本次操作耗时：' + (end - start) + 'ms');
+            },
+            error: function (e) {
+                var jsonStr = e.responseText;
+                var jsonObj = JSON.parse(jsonStr);
+                var buityJsonStr = JSON.stringify(jsonObj, null, 2);
+                $('#right').val(buityJsonStr);
+            }
+        });
+    };
+</script>
+</body>
+</html>

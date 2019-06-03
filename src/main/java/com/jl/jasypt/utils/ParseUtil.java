@@ -19,12 +19,26 @@ import java.util.regex.Pattern;
 public class ParseUtil {
     private static final String[] KEY_WORDS = {"username", "password", "key"};
     private static final String LINE_SEPARATOR = "\n";
-    private static final Pattern PATTERN = Pattern.compile("ENC\\(.*\\)");
 
-    public static boolean isYaml(String text) {
+    private static final Pattern ENC_PATTERN = Pattern.compile("ENC\\(.*\\)");
+    private static final Pattern PROP_PATTERN = Pattern.compile("^([A-Za-z0-9]+\\.)*[A-Za-z0-9]*+\\s?=");
+    private static final Pattern YAML_PATTERN = Pattern.compile("^[a-zA-Z0-9]+:");
+
+    private static final String PROP_JOINT = "=";
+    private static final String YAML_JOINT = ": ";
+
+    public static Boolean isYaml(String text) {
         String[] lines = text.split(LINE_SEPARATOR);
         String line1 = lines[0];
-        return !line1.contains("=");
+        if (YAML_PATTERN.matcher(line1).find()) {
+            return true;
+        } else if (PROP_PATTERN.matcher(line1).find()) {
+            return false;
+        } else if (ENC_PATTERN.matcher(line1).find()) {
+            return null;
+        } else {
+            throw new RuntimeException("解析异常");
+        }
     }
 
     public static Properties toProperties(String text) throws IOException {
@@ -60,7 +74,7 @@ public class ParseUtil {
         String[] lines = process.getText().split("\n");
         StringBuilder sb = new StringBuilder();
         for (String line : lines) {
-            Matcher matcher = PATTERN.matcher(line);
+            Matcher matcher = ENC_PATTERN.matcher(line);
             if (matcher.find()) {
                 String target = matcher.group();
                 String encrypted = target.substring(4, target.length() - 1);
@@ -86,13 +100,17 @@ public class ParseUtil {
     }
 
     public static String parseByOutType(String out, int outType) throws IOException {
-        boolean yaml = isYaml(out);
+        Boolean yaml = isYaml(out);
+        // 全文加密之后的格式既不是prop也不是yaml，所以直接返回即可
+        if (yaml == null) {
+            return out;
+        }
         if (yaml) {
             if (outType == 1) {
                 Properties properties = yamlStrToProp(out);
                 StringBuilder sb = new StringBuilder();
                 for (Object o : properties.keySet()) {
-                    sb.append((String) o).append(" = ").append(properties.get(o)).append("\n");
+                    sb.append((String) o).append(PROP_JOINT).append(properties.get(o)).append("\n");
                 }
                 return sb.substring(0, sb.length() - 1);
             } else {
@@ -129,12 +147,12 @@ public class ParseUtil {
                 sb.append(" ");
             }
             if (value instanceof Map) {
-                sb.append(key).append(":").append(LINE_SEPARATOR);
+                sb.append(key).append(YAML_JOINT).append(LINE_SEPARATOR);
                 blankCount += 2;
                 yamlMapToYamlStr((Map<String, Object>) value, sb, blankCount);
                 blankCount -= 2;
             } else {
-                sb.append(key).append(": ").append((String) value).append(LINE_SEPARATOR);
+                sb.append(key).append(YAML_JOINT).append((String) value).append(LINE_SEPARATOR);
             }
         }
     }
@@ -167,7 +185,7 @@ public class ParseUtil {
             String key = (String) o;
             String value = String.valueOf(prop.get(o));
 
-            sb.append(key).append(" = ");
+            sb.append(key).append(PROP_JOINT);
 
             if (hasKeyWords(key)) {
                 if (process.isEncrypt()) {

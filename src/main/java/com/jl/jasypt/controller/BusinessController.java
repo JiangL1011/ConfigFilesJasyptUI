@@ -1,7 +1,6 @@
 package com.jl.jasypt.controller;
 
 import com.jl.jasypt.bean.Process;
-import com.jl.jasypt.utils.ParseUtil;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,9 +26,10 @@ public class BusinessController {
             outStr = decrypt(process);
         } else {
             if (process.isAuto()) {
-                if (ParseUtil.isYaml(process.getText())) {
+                Boolean isYaml = isYaml(process.getText());
+                if (isYaml != null && isYaml) {
                     Properties prop = yamlStrToProp(process.getText());
-                    String propStr = autoEncryptOrDecrypt(process, prop);
+                    String propStr = autoEncrypt(process, prop);
                     try {
                         outStr = propStrToYamlStr(propStr);
                     } catch (IOException e) {
@@ -39,7 +39,7 @@ public class BusinessController {
                 } else {
                     try {
                         Properties prop = toProperties(process.getText());
-                        outStr = autoEncryptOrDecrypt(process, prop);
+                        outStr = autoEncrypt(process, prop);
                     } catch (IOException e) {
                         e.printStackTrace();
                         return ResponseEntity.status(500).body(e.getMessage());

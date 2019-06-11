@@ -9,6 +9,7 @@ public class Process {
     private boolean encrypt;
     private boolean auto;
     private String salt;
+    private String encType;
     /**
      * 输出格式
      * 0 自动  1 prop  2 yaml
@@ -53,5 +54,13 @@ public class Process {
 
     public void setOutType(int outType) {
         this.outType = outType;
+    }
+
+    public String getEncType() {
+        return encType;
+    }
+
+    public void setEncType(String encType) {
+        this.encType = encType;
     }
 }

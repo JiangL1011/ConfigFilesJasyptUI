@@ -54,6 +54,15 @@
         <input id="yaml" type="radio" name="outType" value="2">
         <label for="yaml">yml/yaml</label>
     </div>
+    <div>
+        <br>
+        <span>自定义加密格式：</span>
+        <input id="jasypt" type="radio" name="encType" value="jasypt" checked>
+        <label for="jasypt">jasypt</label>
+        &nbsp;&nbsp;
+        <input id="3DES" type="radio" name="encType" value="3DES">
+        <label for="3DES">3DES</label>
+    </div>
 </div>
 <div id="container">
     <textarea id="left" class="area" wrap="off"></textarea>
@@ -77,6 +86,8 @@
             left.scrollTop($(this).scrollTop());
             left.scrollLeft($(this).scrollLeft());
         });
+
+        $('#tool-bar').css('margin-left', left[0].offsetLeft + 'px');
     });
 
     var encryptAll = function () {
@@ -120,7 +131,8 @@
                 encrypt: encrypt,
                 auto: auto,
                 salt: getSalt(),
-                outType: $('input[name="outType"]:checked').val()
+                outType: $('input[name="outType"]:checked').val(),
+                encType: $('input[name="encType"]:checked').val()
             },
             success: function (data) {
                 var end = new Date().getTime();

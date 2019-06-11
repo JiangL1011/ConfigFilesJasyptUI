@@ -21,6 +21,7 @@ public class ParseUtil {
     private static final String LINE_SEPARATOR = "\n";
 
     private static final Pattern ENC_PATTERN = Pattern.compile("ENC\\(.*\\)");
+    private static final Pattern DES_PATTERN = Pattern.compile("DES#.*");
     private static final Pattern PROP_PATTERN = Pattern.compile("^([A-Za-z0-9]+\\.)*[A-Za-z0-9]*+\\s?=");
     private static final Pattern YAML_PATTERN = Pattern.compile("^[a-zA-Z0-9]+:");
 
@@ -34,10 +35,8 @@ public class ParseUtil {
             return true;
         } else if (PROP_PATTERN.matcher(line1).find()) {
             return false;
-        } else if (ENC_PATTERN.matcher(line1).find()) {
-            return null;
         } else {
-            throw new RuntimeException("解析异常");
+            return null;
         }
     }
 
@@ -74,12 +73,18 @@ public class ParseUtil {
         String[] lines = process.getText().split("\n");
         StringBuilder sb = new StringBuilder();
         for (String line : lines) {
-            Matcher matcher = ENC_PATTERN.matcher(line);
-            if (matcher.find()) {
-                String target = matcher.group();
+            Matcher encMatcher = ENC_PATTERN.matcher(line);
+            Matcher desMatcher = DES_PATTERN.matcher(line);
+            if (encMatcher.find()) {
+                String target = encMatcher.group();
                 String encrypted = target.substring(4, target.length() - 1);
                 String decrypt = encryptor.decrypt(encrypted);
                 String replace = line.replace(target, decrypt);
+                sb.append(replace).append("\n");
+            } else if (desMatcher.find()) {
+                String target = desMatcher.group();
+                String des = DesUtil.decrypt(target, process.getSalt());
+                String replace = line.replace(target, des);
                 sb.append(replace).append("\n");
             } else {
                 sb.append(line).append("\n");
@@ -93,8 +98,12 @@ public class ParseUtil {
         String[] lines = process.getText().split("\n");
         StringBuilder sb = new StringBuilder();
         for (String line : lines) {
-            String encrypt = encryptor.encrypt(line);
-            sb.append("ENC(").append(encrypt).append(")").append("\n");
+            if ("jasypt".equals(process.getEncType())) {
+                String encrypt = encryptor.encrypt(line);
+                sb.append("ENC(").append(encrypt).append(")").append("\n");
+            } else {
+                sb.append(DesUtil.encrypt(line, process.getSalt())).append("\n");
+            }
         }
         return sb.substring(0, sb.length() - 1);
     }
@@ -177,7 +186,7 @@ public class ParseUtil {
     /**
      * @return prop格式的字符串
      */
-    public static String autoEncryptOrDecrypt(Process process, Properties prop) {
+    public static String autoEncrypt(Process process, Properties prop) {
         BasicTextEncryptor encryptor = getEncryptor(process.getSalt());
 
         StringBuilder sb = new StringBuilder();
@@ -188,11 +197,13 @@ public class ParseUtil {
             sb.append(key).append(PROP_JOINT);
 
             if (hasKeyWords(key)) {
-                if (process.isEncrypt()) {
+                if ("jasypt".equals(process.getEncType())) {
                     String encrypted = encryptor.encrypt(value);
                     sb.append("ENC(");
                     sb.append(encrypted);
                     sb.append(")");
+                } else {
+                    sb.append(DesUtil.encrypt(value, process.getSalt()));
                 }
             } else {
                 sb.append(value);
